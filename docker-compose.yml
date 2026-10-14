@@ -1,0 +1,39 @@
+# Локальное окружение.
+#   docker compose up -d postgres redis   — только зависимости (сервер через cargo run)
+#   docker compose up --build             — всё, включая сервер
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: voicechach
+      POSTGRES_PASSWORD: voicechach
+      POSTGRES_DB: voicechach
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voicechach"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build: .
+    environment:
+      APP__DATABASE__URL: postgres://voicechach:voicechach@postgres:5432/voicechach
+      RUST_LOG: info,server=debug
+    ports: ["8080:8080"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

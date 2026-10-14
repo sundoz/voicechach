@@ -1,0 +1,17 @@
+# Базовые настройки. Переопределяются файлом config/<APP_ENV>.toml
+# и переменными окружения вида APP__SERVER__PORT=8080.
+
+[server]
+host = "0.0.0.0"
+port = 8080
+request_timeout_secs = 30
+cors_origins = ["http://localhost:5173"]
+
+[database]
+url = "postgres://voicechach:voicechach@localhost:5432/voicechach"
+max_connections = 10
+run_migrations = true
+
+[log]
+level = "info,server=debug,tower_http=debug,sqlx=warn"
+format = "pretty"
