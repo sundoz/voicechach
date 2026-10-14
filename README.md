@@ -3,7 +3,6 @@
 Бэкенд голосового и текстового чата на Rust (axum, tokio, sqlx, Postgres, Redis, WebRTC).
 
 - План по этапам: [docs/ROADMAP.md](docs/ROADMAP.md)
-- Конспекты уроков: [docs/lessons/](docs/lessons/)
 
 ## Быстрый старт
 
