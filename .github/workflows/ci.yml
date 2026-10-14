@@ -7,6 +7,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # Макросы sqlx берут схему из .sqlx/ вместо живой БД.
+  SQLX_OFFLINE: "true"
 
 jobs:
   lint:

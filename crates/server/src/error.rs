@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use serde_json::json;
+use serde_json::{Value, json};
 
 /// Единая ошибка приложения. Хендлеры возвращают `Result<T, AppError>`,
 /// а `IntoResponse` превращает её в JSON-ответ с нужным статусом.
@@ -13,6 +13,10 @@ pub enum AppError {
     NotFound,
     #[error("{0}")]
     BadRequest(String),
+    #[error("validation failed")]
+    Validation(Value),
+    #[error("{0}")]
+    Conflict(String),
     #[error("unauthorized")]
     Unauthorized,
     #[error("service unavailable: {0}")]
@@ -28,6 +32,8 @@ impl AppError {
         match self {
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::BadRequest(_) => StatusCode::BAD_REQUEST,
+            Self::Validation(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::Conflict(_) => StatusCode::CONFLICT,
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
             Self::Unavailable(_) => StatusCode::SERVICE_UNAVAILABLE,
             Self::Database(_) | Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -38,6 +44,8 @@ impl AppError {
         match self {
             Self::NotFound => "not_found",
             Self::BadRequest(_) => "bad_request",
+            Self::Validation(_) => "validation",
+            Self::Conflict(_) => "conflict",
             Self::Unauthorized => "unauthorized",
             Self::Unavailable(_) => "unavailable",
             Self::Database(_) | Self::Internal(_) => "internal",
@@ -45,19 +53,28 @@ impl AppError {
     }
 }
 
+impl From<validator::ValidationErrors> for AppError {
+    fn from(errors: validator::ValidationErrors) -> Self {
+        Self::Validation(serde_json::to_value(errors).unwrap_or(Value::Null))
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let status = self.status();
         // Детали внутренних ошибок пишем в лог, но не отдаём клиенту.
-        let message = if status.is_server_error() && status != StatusCode::SERVICE_UNAVAILABLE {
+        let message = if status == StatusCode::INTERNAL_SERVER_ERROR {
             tracing::error!(error = ?self, "internal error");
             "internal server error".to_string()
         } else {
             self.to_string()
         };
 
-        let body = json!({ "error": { "code": self.code(), "message": message } });
-        (status, Json(body)).into_response()
+        let mut error = json!({ "code": self.code(), "message": message });
+        if let Self::Validation(details) = self {
+            error["details"] = details;
+        }
+        (status, Json(json!({ "error": error }))).into_response()
     }
 }
 

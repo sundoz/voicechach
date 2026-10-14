@@ -28,6 +28,31 @@
 Стек: `tokio`, `axum`, `sqlx` (Postgres), `redis`, `jsonwebtoken` + `argon2`,
 `tracing` + OpenTelemetry, `str0m` (WebRTC), Docker, GitHub Actions.
 
+## Схема данных
+
+| Данные | Где |
+|---|---|
+| пользователи, серверы, каналы, сообщения, роли | Postgres |
+| presence, кто в голосовом канале, «печатает…» | Redis (эфемерное) |
+| файлы, аватары | S3/MinIO (в БД только метаданные) |
+
+```
+users ─┬─ sessions (refresh-токены: хэш, family_id для ротации)
+       ├─ guild_members ── guilds ── roles (permissions: bigint-маска)
+       │        └─ member_roles
+       ├─ channel_recipients ── channels (guild_id NULL = ЛС; kind: text|voice|dm)
+       └─ messages (channel_id, author_id, reply_to, edited_at, deleted_at)
+              ├─ attachments
+              ├─ reactions
+              └─ read_states (user, channel, last_read_message_id)
+```
+
+- id — UUIDv7 (сортируются по времени): быстрые вставки, курсорная пагинация
+  `WHERE channel_id = $1 AND id < $cursor ORDER BY id DESC`
+- сообщения удаляются мягко (`deleted_at`)
+- таблицы добавляются миграциями по этапам: 1 — users, sessions;
+  2 — guilds…messages; 6 — attachments, reactions, read_states
+
 ## Этапы
 
 ### Этап 0 — Каркас ✅
@@ -43,7 +68,7 @@
 
 **Учим:** модули, `Result`/`?`, `thiserror`, `async`/`tokio`, axum-экстракторы, `Arc`-состояние.
 
-### Этап 1 — Пользователи и аутентификация
+### Этап 1 — Пользователи и аутентификация ✅
 - Регистрация / логин, пароли через `argon2`
 - Access-JWT (короткий) + refresh-токены в БД с ротацией
 - Экстрактор `AuthUser`, middleware

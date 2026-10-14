@@ -1,16 +1,18 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use anyhow::Context;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use crate::config::Settings;
+use crate::{auth::jwt::Jwt, config::Settings};
 
 /// Общее состояние, доступное всем хендлерам через `State<AppState>`.
 /// Клонируется на каждый запрос, поэтому внутри только дешёвые
-/// для клонирования вещи (`PgPool` — это `Arc` внутри).
+/// для клонирования вещи (`PgPool` и `Arc` — это счётчики ссылок).
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
+    pub jwt: Arc<Jwt>,
+    pub refresh_ttl: chrono::Duration,
 }
 
 impl AppState {
@@ -22,7 +24,21 @@ impl AppState {
             .acquire_timeout(Duration::from_secs(3))
             .connect_lazy(&settings.database.url)
             .context("invalid database url")?;
-        Ok(Self { db })
+        Self::with_pool(db, settings)
+    }
+
+    /// Отдельный конструктор нужен тестам: `sqlx::test` сам создаёт пул
+    /// к свежей временной базе.
+    pub fn with_pool(db: PgPool, settings: &Settings) -> anyhow::Result<Self> {
+        let auth = &settings.auth;
+        Ok(Self {
+            db,
+            jwt: Arc::new(Jwt::new(
+                &auth.jwt_secret,
+                chrono::Duration::seconds(auth.access_token_ttl_secs),
+            )?),
+            refresh_ttl: chrono::Duration::days(auth.refresh_token_ttl_days),
+        })
     }
 
     pub async fn run_migrations(&self) -> anyhow::Result<()> {

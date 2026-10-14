@@ -14,6 +14,8 @@ COPY --from=planner /app/recipe.json recipe.json
 # Этот слой пересобирается только при изменении Cargo.toml/Cargo.lock
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
+# Схема для проверки SQL берётся из .sqlx/, БД при сборке не нужна
+ENV SQLX_OFFLINE=true
 RUN cargo build --release --bin server
 
 # --- 2. Минимальный рантайм-образ ---

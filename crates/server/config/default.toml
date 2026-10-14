@@ -15,3 +15,9 @@ run_migrations = true
 [log]
 level = "info,server=debug,tower_http=debug,sqlx=warn"
 format = "pretty"
+
+[auth]
+# jwt_secret задаётся в config/local.toml (для разработки)
+# или через APP__AUTH__JWT_SECRET (в проде).
+access_token_ttl_secs = 900    # 15 минут
+refresh_token_ttl_days = 30

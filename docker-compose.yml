@@ -29,6 +29,7 @@ services:
     build: .
     environment:
       APP__DATABASE__URL: postgres://voicechach:voicechach@postgres:5432/voicechach
+      APP__AUTH__JWT_SECRET: compose-dev-secret-change-me-0123456789abcdef
       RUST_LOG: info,server=debug
     ports: ["8080:8080"]
     depends_on:

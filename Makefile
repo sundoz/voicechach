@@ -1,4 +1,4 @@
-.PHONY: dev deps down run test lint fmt check docker
+.PHONY: deps down run test lint fmt check docker migrate migration prepare
 
 deps:            ## Поднять Postgres и Redis
 	docker compose up -d postgres redis
@@ -23,3 +23,12 @@ check: lint test
 
 docker:          ## Собрать образ
 	docker build -t voicechach-server .
+
+migrate:         ## Применить миграции (нужен sqlx-cli)
+	sqlx migrate run
+
+migration:       ## Новая миграция: make migration name=add_guilds
+	sqlx migrate add $(name)
+
+prepare:         ## Обновить .sqlx/ после изменения SQL-запросов
+	cargo sqlx prepare --workspace -- --all-targets

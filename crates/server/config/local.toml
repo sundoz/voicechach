@@ -1,0 +1,3 @@
+# Настройки для локальной разработки и тестов (APP_ENV=local, по умолчанию).
+[auth]
+jwt_secret = "local-dev-secret-do-not-use-in-production-0123456789"

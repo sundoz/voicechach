@@ -9,6 +9,7 @@ pub struct Settings {
     pub server: ServerSettings,
     pub database: DatabaseSettings,
     pub log: LogSettings,
+    pub auth: AuthSettings,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -30,6 +31,24 @@ pub struct DatabaseSettings {
     pub url: String,
     pub max_connections: u32,
     pub run_migrations: bool,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct AuthSettings {
+    pub jwt_secret: String,
+    pub access_token_ttl_secs: i64,
+    pub refresh_token_ttl_days: i64,
+}
+
+// Debug реализован вручную, чтобы секрет не утёк в логи через `{:?}`.
+impl std::fmt::Debug for AuthSettings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AuthSettings")
+            .field("jwt_secret", &"[redacted]")
+            .field("access_token_ttl_secs", &self.access_token_ttl_secs)
+            .field("refresh_token_ttl_days", &self.refresh_token_ttl_days)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
